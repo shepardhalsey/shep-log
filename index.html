@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Shep Log">
+<title>Shep Log</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap');
+  :root {
+    --bg:#000000;--surface:#111111;--surface2:#1a1a1a;--border:#2a2a2a;
+    --accent:#ffffff;--accent2:#a0a0a0;--text:#ffffff;--muted:#555555;
+    --danger:#ff4444;--purple:#a78bfa;--teal:#60c4d6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:80px;}
+
+  .header{padding:52px 20px 20px;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:0;z-index:100;}
+  .header-top{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:16px;}
+  h1{font-family:'Bebas Neue',sans-serif;font-size:2.6rem;font-weight:400;color:var(--accent);line-height:1;letter-spacing:.04em;}
+  .subtitle{font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-top:4px;}
+  .new-btn{background:var(--accent);color:var(--bg);border:none;border-radius:2px;font-family:'Inter',sans-serif;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;padding:10px 16px;cursor:pointer;font-weight:600;}
+  .stats{display:flex;gap:20px;flex-wrap:wrap;}
+  .stat{display:flex;flex-direction:column;gap:2px;}
+  .stat-val{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:var(--accent);line-height:1;letter-spacing:.04em;}
+  .stat-lbl{font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);}
+
+  .filters{display:flex;gap:8px;padding:14px 20px;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;}
+  .filters::-webkit-scrollbar{display:none;}
+  .filter-btn{padding:6px 14px;border:1px solid var(--border);border-radius:2px;background:transparent;color:var(--muted);font-family:'Inter',sans-serif;font-size:.65rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;white-space:nowrap;}
+  .filter-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(255,255,255,.06);}
+
+  .project-list{padding:16px 20px;display:flex;flex-direction:column;gap:12px;}
+  .empty-state{text-align:center;padding:60px 20px;color:var(--muted);}
+  .empty-state .big{font-family:'Playfair Display',serif;font-size:3rem;margin-bottom:12px;opacity:.3;}
+  .empty-state p{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;}
+
+  .project-card{background:var(--surface);border:1px solid var(--border);border-radius:3px;overflow:hidden;cursor:pointer;}
+  .project-card:active{border-color:var(--accent);}
+  .card-progress{height:3px;background:var(--border);}
+  .card-progress-fill{height:100%;background:var(--accent);}
+  .card-header{padding:14px 16px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+  .card-title{font-family:'Inter',sans-serif;font-size:1rem;font-weight:600;color:var(--text);line-height:1.2;}
+  .card-subtitle{font-size:.65rem;color:var(--muted);margin-top:4px;}
+  .card-thumbs{display:flex;gap:4px;padding:0 16px 12px;overflow-x:auto;scrollbar-width:none;}
+  .card-thumbs::-webkit-scrollbar{display:none;}
+  .card-thumb{width:52px;height:40px;object-fit:cover;border-radius:2px;flex-shrink:0;border:1px solid var(--border);}
+  .card-meta{display:flex;gap:16px;padding:0 16px 14px;flex-wrap:wrap;}
+  .meta-item{font-size:.62rem;color:var(--muted);}
+  .meta-item span{color:var(--text);}
+
+  .status-badge{font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;padding:4px 8px;border-radius:2px;white-space:nowrap;flex-shrink:0;}
+  .status-planning{border:1px solid var(--muted);color:var(--muted);}
+  .status-active{border:1px solid #fff;color:#fff;background:rgba(255,255,255,.06);}
+  .status-finishing{border:1px solid var(--purple);color:var(--purple);background:rgba(167,139,250,.08);}
+  .status-complete{border:1px solid #6ee7b7;color:#6ee7b7;background:rgba(110,231,183,.08);}
+
+  /* MODAL */
+  .modal-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  .modal-overlay.open{display:block;}
+  .modal{padding:52px 20px 80px;position:relative;}
+  .modal-back{position:fixed;top:14px;left:16px;background:var(--bg);border:none;color:var(--muted);font-family:'Inter',sans-serif;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;padding:8px 0;z-index:10;}
+  .modal-actions{position:fixed;top:12px;right:16px;display:flex;gap:8px;z-index:10;}
+  .modal-title{font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--accent);margin-bottom:4px;line-height:1.2;margin-top:8px;letter-spacing:.04em;}
+  .modal-wood{font-size:.65rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;}
+
+  .detail-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px;overflow-x:auto;scrollbar-width:none;}
+  .detail-tabs::-webkit-scrollbar{display:none;}
+  .detail-tab{padding:10px 16px;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;}
+  .detail-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  .section{margin-bottom:20px;border:1px solid var(--border);border-radius:3px;overflow:hidden;}
+  .section-header{padding:10px 14px;background:var(--surface2);font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:center;}
+  .section-add{background:transparent;border:none;color:var(--accent);font-family:'Inter',sans-serif;font-size:.65rem;letter-spacing:.06em;cursor:pointer;}
+  .section-body{padding:12px 14px;}
+
+  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .info-item{display:flex;flex-direction:column;gap:3px;}
+  .info-label{font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);}
+  .info-value{font-size:.82rem;color:var(--text);}
+
+  .session-item{padding:10px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .session-item:last-child{border-bottom:none;padding-bottom:0;}
+  .session-date{font-size:.65rem;color:var(--muted);white-space:nowrap;}
+  .session-duration{font-family:'Inter',sans-serif;font-size:1rem;font-weight:600;color:var(--accent);white-space:nowrap;}
+  .session-notes{font-size:.72rem;color:var(--text);flex:1;line-height:1.4;}
+  .del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:2px 4px;flex-shrink:0;}
+
+  .material-item{padding:8px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  .material-item:last-child{border-bottom:none;padding-bottom:0;}
+  .material-name{font-size:.75rem;color:var(--text);flex:1;}
+  .material-cost{font-size:.75rem;color:var(--accent);white-space:nowrap;}
+
+  .tools-list{display:flex;flex-wrap:wrap;gap:6px;}
+  .tool-tag{font-size:.65rem;padding:4px 10px;border:1px solid var(--border);border-radius:2px;color:var(--text);display:flex;align-items:center;gap:6px;}
+  .tool-remove{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.75rem;padding:0;line-height:1;}
+
+  .note-item{padding:10px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:10px;}
+  .note-item:last-child{border-bottom:none;padding-bottom:0;}
+  .note-text{font-size:.75rem;color:var(--text);flex:1;line-height:1.5;}
+  .note-date{font-size:.6rem;color:var(--muted);white-space:nowrap;}
+
+  .cost-total{display:flex;justify-content:space-between;padding:10px 14px;background:var(--surface2);font-size:.72rem;color:var(--muted);}
+  .cost-total span{color:var(--accent);font-family:'Inter',sans-serif;font-weight:600;font-size:1rem;}
+  .time-total{display:flex;justify-content:space-between;padding:10px 14px;background:var(--surface2);font-size:.72rem;color:var(--muted);}
+  .time-total span{color:var(--accent);font-family:'Inter',sans-serif;font-weight:600;font-size:1rem;}
+
+  /* PHOTOS */
+  .photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;}
+  .photo-wrap{position:relative;aspect-ratio:1;overflow:hidden;border-radius:2px;cursor:pointer;}
+  .photo-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
+  .photo-caption-label{font-size:.6rem;color:var(--muted);margin-top:3px;line-height:1.3;text-align:center;}
+  .photo-del{position:absolute;top:4px;right:4px;background:rgba(10,8,5,.85);border:none;color:var(--text);border-radius:2px;font-size:.65rem;padding:2px 6px;cursor:pointer;}
+
+  /* DESIGN DECISIONS */
+  .decision-item{padding:12px 0;border-bottom:1px solid var(--border);}
+  .decision-item:last-child{border-bottom:none;padding-bottom:0;}
+  .decision-header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px;}
+  .decision-title{font-size:.8rem;color:var(--accent);flex:1;}
+  .decision-date{font-size:.6rem;color:var(--muted);white-space:nowrap;}
+  .decision-text{font-size:.72rem;color:var(--text);line-height:1.5;}
+  .decision-tag{font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;padding:2px 6px;border-radius:2px;margin-top:6px;display:inline-block;}
+  .tag-structural{border:1px solid var(--danger);color:var(--danger);}
+  .tag-aesthetic{border:1px solid var(--purple);color:var(--purple);}
+  .tag-material{border:1px solid var(--accent);color:var(--accent);}
+  .tag-joinery{border:1px solid var(--accent2);color:var(--accent2);}
+  .tag-finish{border:1px solid var(--teal);color:var(--teal);}
+
+  /* LIGHTBOX */
+  .lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.97);z-index:500;align-items:center;justify-content:center;flex-direction:column;padding:20px;}
+  .lightbox.open{display:flex;}
+  .lightbox img{max-width:100%;max-height:80vh;object-fit:contain;border-radius:2px;}
+  .lightbox-caption{color:var(--muted);font-size:.72rem;margin-top:12px;text-align:center;}
+  .lightbox-close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);font-size:1.6rem;cursor:pointer;}
+
+  /* FORM */
+  .form-modal{display:none;position:fixed;inset:0;background:rgba(10,8,5,.97);z-index:300;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  .form-modal.open{display:block;}
+  .form-inner{background:var(--surface2);margin:20px;border-radius:4px;border:1px solid var(--border);padding:20px;margin-top:60px;margin-bottom:40px;}
+  .form-title{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--accent);margin-bottom:16px;letter-spacing:.04em;}
+  .form-group{margin-bottom:14px;}
+  .form-label{display:block;font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+  .form-input,.form-select,.form-textarea{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:2px;color:var(--text);font-family:'Inter',sans-serif;font-size:.82rem;padding:10px 12px;outline:none;-webkit-appearance:none;}
+  .form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent);}
+  .form-textarea{resize:vertical;min-height:80px;line-height:1.5;}
+  .form-select option{background:var(--bg);}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .form-actions{display:flex;gap:10px;margin-top:20px;}
+  .btn-primary{flex:1;background:var(--accent);color:var(--bg);border:none;border-radius:2px;font-family:'Inter',sans-serif;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;padding:12px;cursor:pointer;font-weight:600;}
+  .btn-secondary{flex:1;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:2px;font-family:'Inter',sans-serif;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;padding:12px;cursor:pointer;}
+  .btn-danger{background:transparent;color:var(--danger);border:1px solid var(--danger);border-radius:2px;font-family:'Inter',sans-serif;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;padding:10px 16px;cursor:pointer;}
+  .icon-btn{background:transparent;border:1px solid var(--border);border-radius:2px;color:var(--muted);font-family:'Inter',sans-serif;font-size:.65rem;letter-spacing:.06em;padding:8px 12px;cursor:pointer;}
+
+  .photo-upload-area{border:1px dashed var(--border);border-radius:2px;padding:24px;text-align:center;cursor:pointer;color:var(--muted);font-size:.72rem;letter-spacing:.08em;position:relative;}
+  .photo-upload-area input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+  .photo-preview{max-width:100%;max-height:200px;object-fit:contain;border-radius:2px;display:none;margin-top:12px;}
+
+  .status-selector{display:flex;gap:6px;flex-wrap:wrap;}
+  .status-opt{padding:6px 12px;border:1px solid var(--border);border-radius:2px;font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--muted);background:transparent;font-family:'Inter',sans-serif;}
+  .status-opt.selected-planning{border-color:var(--muted);color:var(--text);}
+  .status-opt.selected-active{border-color:#fff;color:#fff;}
+  .status-opt.selected-finishing{border-color:var(--purple);color:var(--purple);}
+  .status-opt.selected-complete{border-color:#6ee7b7;color:#6ee7b7;}
+  .empty-section{color:var(--muted);font-size:.72rem;font-style:italic;}
+</style>
+</head>
+<body>
+
+<div id="listView">
+  <div class="header">
+    <div class="header-top">
+      <div><h1>Shep Log</h1><div class="subtitle">Fine Woodworking</div></div>
+      <button class="new-btn" onclick="openNewProject()">+ New</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="stat-val" id="statTotal">0</div><div class="stat-lbl">Projects</div></div>
+      <div class="stat"><div class="stat-val" id="statActive">0</div><div class="stat-lbl">Active</div></div>
+      <div class="stat"><div class="stat-val" id="statHours">0</div><div class="stat-lbl">Hrs</div></div>
+      <div class="stat"><div class="stat-val" id="statCost">$0</div><div class="stat-lbl">Invested</div></div>
+    </div>
+  </div>
+  <div class="filters">
+    <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+    <button class="filter-btn" onclick="setFilter('planning',this)">Planning</button>
+    <button class="filter-btn" onclick="setFilter('active',this)">Active</button>
+    <button class="filter-btn" onclick="setFilter('finishing',this)">Finishing</button>
+    <button class="filter-btn" onclick="setFilter('complete',this)">Complete</button>
+  </div>
+  <div class="project-list" id="projectList"></div>
+</div>
+
+<!-- DETAIL -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal">
+    <button class="modal-back" onclick="closeDetail()">← Back</button>
+    <div class="modal-actions">
+      <button class="icon-btn" onclick="openEditProject()">Edit</button>
+      <button class="btn-danger" onclick="deleteProject()">Delete</button>
+    </div>
+    <div style="margin-top:20px">
+      <div class="modal-title" id="detailTitle"></div>
+      <div class="modal-wood" id="detailWood"></div>
+      <span class="status-badge" id="detailStatus"></span>
+      <div class="detail-tabs" style="margin-top:16px">
+        <div class="detail-tab active" onclick="switchTab('build',this)">Build</div>
+        <div class="detail-tab" onclick="switchTab('design',this)">Design</div>
+        <div class="detail-tab" onclick="switchTab('materials',this)">Materials</div>
+        <div class="detail-tab" onclick="switchTab('tools',this)">Tools</div>
+      </div>
+
+      <div class="tab-panel active" id="tab-build">
+        <div class="section">
+          <div class="section-header">Project Info</div>
+          <div class="section-body"><div class="info-grid" id="detailInfo"></div></div>
+        </div>
+        <div class="section">
+          <div class="section-header">Work Sessions <button class="section-add" onclick="openAddSession()">+ Add</button></div>
+          <div class="time-total">Total time <span id="detailTotalTime">0 hrs</span></div>
+          <div class="section-body" id="detailSessions"></div>
+        </div>
+        <div class="section">
+          <div class="section-header">Build Notes <button class="section-add" onclick="openAddNote()">+ Add</button></div>
+          <div class="section-body" id="detailNotes"></div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-design">
+        <div class="section">
+          <div class="section-header">Sketches & Drawings <button class="section-add" onclick="openAddPhoto('sketch')">+ Add</button></div>
+          <div class="section-body"><div class="photo-grid" id="detailSketches"></div></div>
+        </div>
+        <div class="section">
+          <div class="section-header">Veneer Layouts & Mockups <button class="section-add" onclick="openAddPhoto('veneer')">+ Add</button></div>
+          <div class="section-body"><div class="photo-grid" id="detailVeneers"></div></div>
+        </div>
+        <div class="section">
+          <div class="section-header">Rhino Model Notes <button class="section-add" onclick="openAddRhinoNote()">+ Add</button></div>
+          <div class="section-body" id="detailRhino"></div>
+        </div>
+        <div class="section">
+          <div class="section-header">Design Decisions <button class="section-add" onclick="openAddDecision()">+ Add</button></div>
+          <div class="section-body" id="detailDecisions"></div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-materials">
+        <div class="section">
+          <div class="section-header">Materials & Cost <button class="section-add" onclick="openAddMaterial()">+ Add</button></div>
+          <div class="cost-total">Total invested <span id="detailTotalCost">$0</span></div>
+          <div class="section-body" id="detailMaterials"></div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-tools">
+        <div class="section">
+          <div class="section-header">Tools Used <button class="section-add" onclick="openAddTool()">+ Add</button></div>
+          <div class="section-body"><div class="tools-list" id="detailTools"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close">✕</button>
+  <img id="lightboxImg" src="" alt="">
+  <div class="lightbox-caption" id="lightboxCaption"></div>
+</div>
+
+<!-- FORM -->
+<div class="form-modal" id="formModal">
+  <div class="form-inner">
+    <div class="form-title" id="formTitle"></div>
+    <div id="formBody"></div>
+  </div>
+</div>
+
+<script>
+let projects = JSON.parse(localStorage.getItem('sheplog_v2')||'[]');
+let currentProjectId=null, currentFilter='all', currentPhotoType=null, pendingPhotoData=null;
+
+function save(){localStorage.setItem('sheplog_v2',JSON.stringify(projects));}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
+function getProject(){return projects.find(p=>p.id===currentProjectId);}
+function formatDate(iso){if(!iso)return'';const d=new Date(iso);return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});}
+function totalHours(p){return(p.sessions||[]).reduce((a,s)=>a+(parseFloat(s.hours)||0),0);}
+function totalCost(p){return(p.materials||[]).reduce((a,m)=>a+(parseFloat(m.cost)||0),0);}
+function allHours(){return projects.reduce((a,p)=>a+totalHours(p),0);}
+function allCost(){return projects.reduce((a,p)=>a+totalCost(p),0);}
+
+function switchTab(name,el){
+  document.querySelectorAll('.detail-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+function setFilter(f,btn){
+  currentFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderList();
+}
+
+function renderList(){
+  document.getElementById('statTotal').textContent=projects.length;
+  document.getElementById('statActive').textContent=projects.filter(p=>p.status==='active').length;
+  document.getElementById('statHours').textContent=allHours().toFixed(1);
+  document.getElementById('statCost').textContent='$'+allCost().toFixed(0);
+  const filtered=currentFilter==='all'?projects:projects.filter(p=>p.status===currentFilter);
+  const list=document.getElementById('projectList');
+  if(filtered.length===0){list.innerHTML=`<div class="empty-state"><div class="big">✦</div><p>No projects yet.<br>Tap + New to begin.</p></div>`;return;}
+  list.innerHTML=filtered.map(p=>{
+    const hrs=totalHours(p),cost=totalCost(p);
+    const progress=p.status==='complete'?100:p.status==='finishing'?75:p.status==='active'?40:10;
+    const allPhotos=[...(p.sketches||[]),...(p.veneers||[])];
+    const thumbs=allPhotos.slice(0,5).map(ph=>`<img class="card-thumb" src="${ph.data}" alt="">`).join('');
+    return`<div class="project-card" onclick="openDetail('${p.id}')">
+      <div class="card-progress"><div class="card-progress-fill" style="width:${progress}%"></div></div>
+      <div class="card-header">
+        <div><div class="card-title">${p.name}</div><div class="card-subtitle">${p.wood||'Species TBD'}${p.dimensions?' · '+p.dimensions:''}</div></div>
+        <span class="status-badge status-${p.status}">${p.status}</span>
+      </div>
+      ${thumbs?`<div class="card-thumbs">${thumbs}</div>`:''}
+      <div class="card-meta">
+        ${hrs>0?`<div class="meta-item">Time <span>${hrs.toFixed(1)} hrs</span></div>`:''}
+        ${cost>0?`<div class="meta-item">Cost <span>$${cost.toFixed(0)}</span></div>`:''}
+        ${p.started?`<div class="meta-item">Started <span>${formatDate(p.started)}</span></div>`:''}
+        ${(p.decisions||[]).length>0?`<div class="meta-item">Decisions <span>${p.decisions.length}</span></div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openDetail(id){
+  currentProjectId=id;
+  document.querySelectorAll('.detail-tab').forEach((t,i)=>t.classList.toggle('active',i===0));
+  document.querySelectorAll('.tab-panel').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-build').classList.add('active');
+  renderDetail();
+  document.getElementById('detailModal').classList.add('open');
+  document.getElementById('detailModal').scrollTop=0;
+}
+
+function closeDetail(){document.getElementById('detailModal').classList.remove('open');currentProjectId=null;renderList();}
+
+function renderDetail(){
+  const p=getProject(); if(!p)return;
+  document.getElementById('detailTitle').textContent=p.name;
+  document.getElementById('detailWood').textContent=[p.wood,p.dimensions,p.joinery].filter(Boolean).join(' · ');
+  const sb=document.getElementById('detailStatus');sb.textContent=p.status;sb.className=`status-badge status-${p.status}`;
+
+  document.getElementById('detailInfo').innerHTML=[
+    p.wood?`<div class="info-item"><div class="info-label">Species</div><div class="info-value">${p.wood}</div></div>`:'',
+    p.dimensions?`<div class="info-item"><div class="info-label">Dimensions</div><div class="info-value">${p.dimensions}</div></div>`:'',
+    p.joinery?`<div class="info-item"><div class="info-label">Joinery</div><div class="info-value">${p.joinery}</div></div>`:'',
+    p.finish?`<div class="info-item"><div class="info-label">Finish</div><div class="info-value">${p.finish}</div></div>`:'',
+    p.started?`<div class="info-item"><div class="info-label">Started</div><div class="info-value">${formatDate(p.started)}</div></div>`:'',
+    p.completed?`<div class="info-item"><div class="info-label">Completed</div><div class="info-value">${formatDate(p.completed)}</div></div>`:'',
+  ].join('');
+
+  const sessions=p.sessions||[];
+  document.getElementById('detailTotalTime').textContent=totalHours(p).toFixed(1)+' hrs';
+  document.getElementById('detailSessions').innerHTML=sessions.length===0?'<div class="empty-section">No sessions logged yet.</div>':sessions.map((s,i)=>`
+    <div class="session-item">
+      <div><div class="session-date">${formatDate(s.date)}</div><div class="session-notes">${s.notes||''}</div></div>
+      <div style="text-align:right;flex-shrink:0"><div class="session-duration">${s.hours}h</div><button class="del-btn" onclick="deleteSession(${i})">✕</button></div>
+    </div>`).join('');
+
+  const notes=p.notes||[];
+  document.getElementById('detailNotes').innerHTML=notes.length===0?'<div class="empty-section">No notes yet.</div>':notes.map((n,i)=>`
+    <div class="note-item">
+      <div class="note-text">${n.text}</div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+        <div class="note-date">${formatDate(n.date)}</div><button class="del-btn" onclick="deleteNote(${i})">✕</button>
+      </div>
+    </div>`).join('');
+
+  renderPhotoGrid('detailSketches',p.sketches||[],'sketch');
+  renderPhotoGrid('detailVeneers',p.veneers||[],'veneer');
+
+  const rhino=p.rhinoNotes||[];
+  document.getElementById('detailRhino').innerHTML=rhino.length===0?'<div class="empty-section">No Rhino model notes yet.</div>':rhino.map((n,i)=>`
+    <div class="note-item">
+      <div><div style="font-size:.72rem;color:var(--teal);margin-bottom:2px;">${n.version||'Version note'}</div><div class="note-text">${n.text}</div></div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+        <div class="note-date">${formatDate(n.date)}</div><button class="del-btn" onclick="deleteRhinoNote(${i})">✕</button>
+      </div>
+    </div>`).join('');
+
+  const decisions=p.decisions||[];
+  document.getElementById('detailDecisions').innerHTML=decisions.length===0?'<div class="empty-section">No design decisions logged yet.</div>':decisions.map((d,i)=>`
+    <div class="decision-item">
+      <div class="decision-header">
+        <div class="decision-title">${d.title}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <div class="decision-date">${formatDate(d.date)}</div>
+          <button class="del-btn" onclick="deleteDecision(${i})">✕</button>
+        </div>
+      </div>
+      <div class="decision-text">${d.text}</div>
+      ${d.tag?`<div class="decision-tag tag-${d.tag}">${d.tag}</div>`:''}
+    </div>`).join('');
+
+  const materials=p.materials||[];
+  document.getElementById('detailTotalCost').textContent='$'+totalCost(p).toFixed(2);
+  document.getElementById('detailMaterials').innerHTML=materials.length===0?'<div class="empty-section">No materials logged yet.</div>':materials.map((m,i)=>`
+    <div class="material-item">
+      <div class="material-name">${m.name}${m.qty?' · '+m.qty:''}</div>
+      <div style="display:flex;align-items:center;gap:8px"><div class="material-cost">$${parseFloat(m.cost||0).toFixed(2)}</div><button class="del-btn" onclick="deleteMaterial(${i})">✕</button></div>
+    </div>`).join('');
+
+  const tools=p.tools||[];
+  document.getElementById('detailTools').innerHTML=tools.length===0?'<div class="empty-section">No tools logged yet.</div>':tools.map((t,i)=>`<div class="tool-tag">${t}<button class="tool-remove" onclick="deleteTool(${i})">✕</button></div>`).join('');
+}
+
+function renderPhotoGrid(elId,photos,type){
+  const el=document.getElementById(elId);
+  if(photos.length===0){el.innerHTML=`<div class="empty-section" style="grid-column:1/-1">No ${type==='sketch'?'sketches':'veneer layouts'} yet.</div>`;return;}
+  el.innerHTML=photos.map((ph,i)=>`
+    <div>
+      <div class="photo-wrap" onclick="openLightbox('${type}',${i})">
+        <img src="${ph.data}" alt="${ph.caption||''}">
+        <button class="photo-del" onclick="event.stopPropagation();deletePhoto('${type}',${i})">✕</button>
+      </div>
+      ${ph.caption?`<div class="photo-caption-label">${ph.caption}</div>`:''}
+    </div>`).join('');
+}
+
+function openLightbox(type,idx){
+  const p=getProject();
+  const ph=(type==='sketch'?p.sketches:p.veneers)[idx];
+  document.getElementById('lightboxImg').src=ph.data;
+  document.getElementById('lightboxCaption').textContent=ph.caption||'';
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox(){document.getElementById('lightbox').classList.remove('open');}
+
+function deleteSession(i){const p=getProject();p.sessions.splice(i,1);save();renderDetail();}
+function deleteMaterial(i){const p=getProject();p.materials.splice(i,1);save();renderDetail();}
+function deleteTool(i){const p=getProject();p.tools.splice(i,1);save();renderDetail();}
+function deleteNote(i){const p=getProject();p.notes.splice(i,1);save();renderDetail();}
+function deleteDecision(i){const p=getProject();p.decisions.splice(i,1);save();renderDetail();}
+function deleteRhinoNote(i){const p=getProject();p.rhinoNotes.splice(i,1);save();renderDetail();}
+function deletePhoto(type,i){const p=getProject();(type==='sketch'?p.sketches:p.veneers).splice(i,1);save();renderDetail();}
+function deleteProject(){if(!confirm('Delete this project?'))return;projects=projects.filter(p=>p.id!==currentProjectId);save();closeDetail();}
+
+function openForm(title,html){document.getElementById('formTitle').textContent=title;document.getElementById('formBody').innerHTML=html;document.getElementById('formModal').classList.add('open');document.getElementById('formModal').scrollTop=0;}
+function closeForm(){document.getElementById('formModal').classList.remove('open');pendingPhotoData=null;}
+
+function statusOpts(selected){
+  return['planning','active','finishing','complete'].map(s=>`<button type="button" class="status-opt ${selected===s?'selected-'+s:''}" onclick="selectStatus(this,'${s}')" data-status="${s}">${s}</button>`).join('');
+}
+function selectStatus(btn,val){btn.closest('.status-selector').querySelectorAll('.status-opt').forEach(b=>b.className='status-opt');btn.className=`status-opt selected-${val}`;}
+
+function openNewProject(){
+  openForm('New Project',`
+    <div class="form-group"><label class="form-label">Project Name *</label><input class="form-input" id="f_name" placeholder="Walnut Coffee Table"></div>
+    <div class="form-group"><label class="form-label">Status</label><div class="status-selector">${statusOpts('planning')}</div></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Wood Species</label><input class="form-input" id="f_wood" placeholder="Black Walnut"></div>
+      <div class="form-group"><label class="form-label">Dimensions</label><input class="form-input" id="f_dim" placeholder='48"×24"×18"'></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Joinery</label><input class="form-input" id="f_joinery" placeholder="Mortise & Tenon"></div>
+      <div class="form-group"><label class="form-label">Finish</label><input class="form-input" id="f_finish" placeholder="Danish Oil"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Start Date</label><input class="form-input" id="f_started" type="date"></div>
+    <div class="form-actions"><button class="btn-secondary" onclick="closeForm()">Cancel</button><button class="btn-primary" onclick="saveNewProject()">Create</button></div>`);
+}
+
+function saveNewProject(){
+  const name=document.getElementById('f_name').value.trim();if(!name){alert('Name required');return;}
+  const statusEl=document.querySelector('.status-opt[class*="selected-"]');
+  projects.unshift({id:uid(),name,status:statusEl?statusEl.dataset.status:'planning',
+    wood:document.getElementById('f_wood').value.trim(),dimensions:document.getElementById('f_dim').value.trim(),
+    joinery:document.getElementById('f_joinery').value.trim(),finish:document.getElementById('f_finish').value.trim(),
+    started:document.getElementById('f_started').value||new Date().toISOString().split('T')[0],
+    sessions:[],materials:[],tools:[],notes:[],sketches:[],veneers:[],decisions:[],rhinoNotes:[]});
+  save();closeForm();renderList();
+}
+
+function openEditProject(){
+  const p=getProject();
+  openForm('Edit Project',`
+    <div class="form-group"><label class="form-label">Project Name</label><input class="form-input" id="f_name" value="${p.name}"></div>
+    <div class="form-group"><label class="form-label">Status</label><div class="status-selector">${statusOpts(p.status)}</div></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Wood Species</label><input class="form-input" id="f_wood" value="${p.wood||''}"></div>
+      <div class="form-group"><label class="form-label">Dimensions</label><input class="form-input" id="f_dim" value="${p.dimensions||''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Joinery</label><input class="form-input" id="f_joinery" value="${p.joinery||''}"></div>
+      <div class="form-group"><label class="form-label">Finish</label><input class="form-input" id="f_finish" value="${p.finish||''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Start Date</label><input class="form-input" id="f_started" type="date" value="${p.started||''}"></div>
+      <div class="form-group"><label class="form-label">Completed</label><input class="form-input" id="f_completed" type="date" value="${p.completed||''}"></div>
+    </div>
+    <div class="form-actions"><button class="btn-secondary" onclick="closeForm()">Cancel</button><button class="btn-primary" onclick="saveEditProject()">Save</button></div>`);
+}
+
+function saveEditProject(){
+  const p=getProject();const statusEl=document.querySelector('.status-opt[class*="selected-"]');
+  p.name=document.getElementById('f_name').value.trim()||p.name;p.status=statusEl?statusEl.dataset.status:p.status;
+  p.wood=document.getElementById('f_wood').value.trim();p.dimensions=document.getElementById('f_dim').value.trim();
+  p.joinery=document.getElementById('f_joinery').value.trim();p.finish=document.getElementById('f_finish').value.trim();
+  p.started=document.getElementById('f_started').value;p.completed=document.getElementById('f_completed').value;
+  save();closeForm();renderDetail();
+}
+
+function openAddSession(){
+  openForm('Log Work Session',`
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Date</label><input class="form-input" id="f_date" type="date" value="${new Date().toISOString().split('T')[0]}"></div>
+      <div class="form-group"><label class="form-label">Hours</label><input class="form-input" id="f_hours" type="number" step="0.5" min="0.5" placeholder="2.5"></div>
+    </div>
+    <div class="form-group"><label class="form-label">What I worked on</label><textarea class="form-textarea" id="f_notes" placeholder="Cut mortises, fitted tenons..."></textarea></div>
+    <div class="form-actions"><button class="btn-secondary" onclick="closeForm()">Cancel</button><button class="btn-primary" onclick="saveSession()">Log</button></div>`);
+}
+function saveSession(){
+  const hours=parseFloat(document.getElementById('f_hours').value);if(!hours||hours<=0){alert('Enter hours');return;}
+  const p=getProject();if(!p.sessions)p.sessions=[];
+  p.sessions.unshift({date:document.getElementById('f_date').value,hours,notes:document.getElementById('f_notes').value.trim()});
+  save();closeForm();renderDetail();
+}
+
+function openAddMaterial(){
+  openForm('Add Material',`
+    <div class="form-group"><label class="form-label">Material / Item</label><input class="form-input" id="f_matname" placeholder="4/4 Black Walnut, 10 BF"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Quantity</label><input class="form-input" id="f_qty" placeholder="10 board feet"></div>
+      <div class="form-group"><label class="form-label">Cost ($)</label><input class="form-input" id="f_cost" type="number" step="0.01" placeholder="0.00"></div>
+    </div>
+    <div class="form-actions"><button class="btn-secondary" onclick="closeForm()">Cancel</button><button class="btn-primary" onclick="saveMaterial()">Add</button></div>`);
+}
+function saveMaterial(){
+  const name=document.getElementById('f_matname').value.trim();if(!name){alert('Enter name');return;}
+  const p=getProject();if(!p.materials)p.materials=[];
+  p.materials.push({name,qty:document.getElementById('f_qty').value.trim(),cost:parseFloat(document.getElementById('f_cost').value)||0});
+  save();closeForm();renderDetail();
+}
+
+function openAddTool(){
+  openForm('Add Tool',`
+    <div class="form-group"><label class="form-label">Tool Name</label><input class="form-input" id="f_tool" placeholder="#4 Bench Plane, Mortise Chisel..."></div>
+    <div class="form-actions"><button class="btn-secondary" onclick="closeForm()">Cancel</button><button class="btn-primary" onclick="saveTool()">Add</button></div>`);
+}
+function saveTool(){
+  const tool=document.getElementById('f_tool').value.trim();if(!tool){alert('Enter tool name');return;}
+  const p=getProject();if(!p.tools)p.tools=[];if(!p.tools.includes(tool))p.tools.push(tool);
+  save();closeForm();renderDetail();
+}
+
+function openAddNote(){
+  openForm('Add Build Note',`
+    <div class="form-group"><label class="form-label">Note</label><textarea class="form-textarea" id="f_note" placeholder="Grain reversal on back panel, adjusted planing direction..."></textarea></div>
+    <div class="form-actions"><button class="btn-secondary" onclick="closeForm()">Cancel</button><button class="btn-primary" onclick="saveNote()">Add</button></div>`);
+}
+function saveNote(){
+  const text=document.getElementById('f_note').value.trim();if(!text){alert('Enter a note');return;}
+  const p=getProject();if(!p.notes)p.notes=[];
+  p.notes.unshift({text,date:new Date().toISOString().split('T')[0]});
+  save();closeForm();renderDetail();
+}
+
+function openAddPhoto(type){
+  currentPhotoType=type;pendingPhotoData=null;
+  const label=type==='sketch'?'Sketch / Drawing':'Veneer Layout / Mockup';
+  openForm(`Add ${label}`,`
+    <div class="form-group">
+      <label class="form-label">Photo</label>
+      <div class="photo-upload-area" id="uploadArea">
+        <input type="file" accept="image/*" onchange="previewPhoto(this)">
+        Tap to select from camera roll
+      </div>
+      <img class="photo-preview" id="photoPreview">
+    </div>
+    <div class="form-group"><label class="form-label">Caption (optional)</label><input class="form-input" id="f_caption" placeholder="${type==='sketch'?'Front elevation, v2':'Book-matched walnut top'}"></div>
+    <div class="form-actions"><button class="btn-secondary" onclick="closeForm()">Cancel</button><button class="btn-primary" onclick="savePhoto()">Add Photo</button></div>`);
+}
+
+function previewPhoto(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    pendingPhotoData=e.target.result;
+    const prev=document.getElementById('photoPreview');
+    prev.src=pendingPhotoData;prev.style.display='block';
+    document.getElementById('uploadArea').style.opacity='0.5';
+  };
+  reader.readAsDataURL(file);
+}
+
+function savePhoto(){
+  if(!pendingPhotoData){alert('Select a photo first');return;}
+  const p=getProject();
+  const entry={data:pendingPhotoData,caption:document.getElementById('f_caption').value.trim(),date:new Date().toISOString().split('T')[0]};
+  if(currentPhotoType==='sketch'){if(!p.sketches)p.sketches=[];p.sketches.push(entry);}
+  else{if(!p.veneers)p.veneers=[];p.veneers.push(entry);}
+  pendingPhotoData=null;save();closeForm();renderDetail();
+}
+
+function openAddRhinoNote(){
+  openForm('Rhino Model Note',`
+    <div class="form-group"><label class="form-label">Version / Iteration</label><input class="form-input" id="f_version" placeholder="v3 — revised leg taper"></div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="f_rnote" placeholder="Adjusted leg taper from 1° to 1.5°, updated joinery geometry..."></textarea></div>
+    <div class="form-actions"><button class="btn-secondary" onclick="closeForm()">Cancel</button><button class="btn-primary" onclick="saveRhinoNote()">Add</button></div>`);
+}
+function saveRhinoNote(){
+  const text=document.getElementById('f_rnote').value.trim();if(!text){alert('Enter notes');return;}
+  const p=getProject();if(!p.rhinoNotes)p.rhinoNotes=[];
+  p.rhinoNotes.unshift({version:document.getElementById('f_version').value.trim(),text,date:new Date().toISOString().split('T')[0]});
+  save();closeForm();renderDetail();
+}
+
+function openAddDecision(){
+  openForm('Log Design Decision',`
+    <div class="form-group"><label class="form-label">Decision Title *</label><input class="form-input" id="f_dtitle" placeholder="Changed leg joinery to M&T"></div>
+    <div class="form-group"><label class="form-label">Details & Reasoning</label><textarea class="form-textarea" id="f_dtext" placeholder="Dowel felt too weak for the span. M&T gives better long-grain glue surface..."></textarea></div>
+    <div class="form-group">
+      <label class="form-label">Category</label>
+      <select class="form-select" id="f_dtag">
+        <option value="">— Select —</option>
+        <option value="structural">Structural</option>
+        <option value="aesthetic">Aesthetic</option>
+        <option value="material">Material</option>
+        <option value="joinery">Joinery</option>
+        <option value="finish">Finish</option>
+      </select>
+    </div>
+    <div class="form-actions"><button class="btn-secondary" onclick="closeForm()">Cancel</button><button class="btn-primary" onclick="saveDecision()">Log</button></div>`);
+}
+function saveDecision(){
+  const title=document.getElementById('f_dtitle').value.trim();if(!title){alert('Enter a title');return;}
+  const p=getProject();if(!p.decisions)p.decisions=[];
+  p.decisions.unshift({title,text:document.getElementById('f_dtext').value.trim(),tag:document.getElementById('f_dtag').value,date:new Date().toISOString().split('T')[0]});
+  save();closeForm();renderDetail();
+}
+
+renderList();
+</script>
+</body>
+</html>
